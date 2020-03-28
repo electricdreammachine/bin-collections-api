@@ -3,7 +3,6 @@ package gettokens
 import (
 	"strings"
 	"regexp"
-
 	"github.com/gocolly/colly"
 	"bin-collections-api/internal/pkg/get-config-value"
 )

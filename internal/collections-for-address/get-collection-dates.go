@@ -5,24 +5,61 @@ import (
 	"fmt"
 	"regexp"
 	"net/http"
+	"strings"
+	"strconv"
 	"bin-collections-api/internal/pkg/get-tokens"
 	"bin-collections-api/internal/pkg/get-config-value"
+	"bin-collections-api/internal/pkg/collection-types"
 )
 
-// Dates describes the collections available in the date range
-type Dates struct {
-	Collections []collection
+// Collections describes the collections available in the date range
+type Collections struct {
+	Dates []collection `json:"dates"`
+	Types map[string]string `json:"types"`
 }
 
 type collection struct {
-	collectionType string
-	collectionDate string
+	Type []string `json:"type"`
+	Date string `json:"date"`
 }
 
 // ForUniqueAddressID gets all available collection dates for a single address 
-func ForUniqueAddressID(t gettokens.Tokens, uniqueAddressID string) <-chan Dates {
+func ForUniqueAddressID(t gettokens.Tokens, uniqueAddressID string) <-chan Collections {
 	c := colly.NewCollector()
-	channel := make(chan Dates)
+	collectionsChannel := make(chan Collections)
+	collectionTypesChannel := make(chan collectiontypes.CollectionColourRegistry)
+
+	c.OnHTML(getconfigvalue.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
+		keyText := e.Text
+		keyRegex := regexp.MustCompile(
+			getconfigvalue.ByKey("KEY_REGEX"),
+		)
+
+		if (keyRegex.Match([]byte(keyText))) {
+			cells := e.DOM.Find("td")
+			cellGroupSize,_ := strconv.Atoi(getconfigvalue.ByKey("KEY_CELLS_GROUP_SIZE"))
+			var collectionTypes []collectiontypes.CollectionColourRegistryEntry
+
+			for i := 0; i < cells.Length(); i = i + cellGroupSize {
+				targetAttribute,_ := cells.Eq(i).Attr("style")
+				colourRegex := regexp.MustCompile(
+					getconfigvalue.ByKey("COLOR_FIND_REGEX"),
+				)
+				collectionTypes = append(collectionTypes,
+					collectiontypes.CollectionColourRegistryEntry{
+						Colour: string(colourRegex.Find([]byte(targetAttribute))),
+						TypeName: strings.Title(strings.ToLower(strings.TrimSpace(cells.Eq(i + 1).Text()))),
+					},
+				)
+			}
+
+			go func() {
+				collectionTypesChannel <- collectiontypes.NewCollectionColourRegistry(collectionTypes)
+	
+				close(collectionTypesChannel)
+			}()
+		}
+	})
 
 	c.OnHTML(getconfigvalue.ByKey("DATES_ELEMENT"), func(e *colly.HTMLElement) {
 		scriptText := e.Text
@@ -30,10 +67,41 @@ func ForUniqueAddressID(t gettokens.Tokens, uniqueAddressID string) <-chan Dates
 			getconfigvalue.ByKey("DATES_REGEX"),
 		)
 
-		dates := datesArrayRegex.FindStringSubmatch(scriptText)[1]
+		unprocessedDateValues := strings.Split(datesArrayRegex.FindStringSubmatch(scriptText)[1], ",")
+		cellGroupSize,_ := strconv.Atoi(getconfigvalue.ByKey("DATES_GROUP_SIZE"))
+		types := <- collectionTypesChannel
+		var dates Collections
 
-		//TODO format and push this back through the channel
-		fmt.Println(dates)
+		for i := 0; i < len(unprocessedDateValues); i = i + cellGroupSize {
+			unprocessedTypes := []string{unprocessedDateValues[i + 1], unprocessedDateValues[i + 2]}
+			var typeIndices []string
+			for _, unprocessedType := range unprocessedTypes {
+				if (len(strings.TrimSpace(unprocessedType[1 : len(unprocessedType) - 1])) > 0) {
+					typeIndices = append(typeIndices, strconv.Itoa(types[unprocessedType[1 : len(unprocessedType) - 1]].Index))
+				}
+			}
+
+			dates.Dates = append(dates.Dates,
+				collection{
+					Type: typeIndices,
+					Date: unprocessedDateValues[i][1 : len(unprocessedDateValues[i]) - 1],
+				},
+			)
+		}
+
+		typesByIndex := make(map[string]string)
+
+		for _, typeByIndex := range types {
+			typesByIndex[strconv.Itoa(typeByIndex.Index)] = typeByIndex.TypeName
+		}
+
+		dates.Types = typesByIndex
+
+		go func() {
+			collectionsChannel <- dates
+
+			close(collectionsChannel)
+		}()
 	})
 
 	c.SetCookies(
@@ -48,5 +116,5 @@ func ForUniqueAddressID(t gettokens.Tokens, uniqueAddressID string) <-chan Dates
 	
 	c.Visit(fmt.Sprintf(getconfigvalue.ByKey("DATES_URL"), t.InstanceID, uniqueAddressID))
 
-	return channel
+	return collectionsChannel
 }

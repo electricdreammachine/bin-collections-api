@@ -3,6 +3,7 @@ package addresssearch
 import (
 	"encoding/json"
 	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -27,6 +28,8 @@ func FindAddressByPostCode(w http.ResponseWriter, r *http.Request) {
 		Timeout: time.Second * 15, // Maximum of 2 secs
 	}
 
+	fmt.Println(getconfigvalue.ByKey("ADDRESS_SEARCH_URL"))
+
 	req, err := http.NewRequest(http.MethodGet, getconfigvalue.ByKey("ADDRESS_SEARCH_URL"), nil)
 	if err != nil {
 		log.Fatal(err)
@@ -37,10 +40,8 @@ func FindAddressByPostCode(w http.ResponseWriter, r *http.Request) {
 	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_2_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_2_VALUE"))
 	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_3_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_3_VALUE"))
 	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_4_KEY"), search.PostCode)
-	q.Add("location", search.PostCode)
 	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_5_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_5_VALUE"))
-	q.Add("pageSize", "21")
-	q.Add("startnum", "1")
+	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_6_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_6_VALUE"))
 	req.URL.RawQuery = q.Encode()
 
 	res, getErr := spaceClient.Do(req)
