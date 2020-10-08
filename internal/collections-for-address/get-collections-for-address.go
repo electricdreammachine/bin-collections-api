@@ -4,7 +4,8 @@ import (
 	"net/http"
 	"log"
 	"encoding/json"
-	"bin-collections-api/internal/pkg/get-tokens"
+	"bin-collections-api/internal/pkg/submit-flow-change"
+	"bin-collections-api/internal/pkg/get-in-page-metadata"
 )
 
 type collectionSearchRequest struct {
@@ -20,8 +21,8 @@ func GetCollectionsForID(w http.ResponseWriter, request *http.Request) {
 		log.Fatal(err)
 	}
 
-	instanceTokens := <-gettokens.GetTokens()
-	collectionDates := <-ForUniqueAddressID(instanceTokens, collectionSearch.addressID)
+	<-submitflowchange.Submit([])
+	collectionDates := <-ForUniqueAddressID(collectionSearch.addressID)
 
 	json.NewEncoder(w).Encode(collectionDates)
 }

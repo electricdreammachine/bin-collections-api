@@ -1,0 +1,14 @@
+version: "3.7"
+services:
+  scraper:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - "${PWD}:/dist"
+    links:
+      - redis
+  redis:
+    image: "redis"
+    ports:
+      - "6379:6379"

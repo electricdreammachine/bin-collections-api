@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"strconv"
-	"bin-collections-api/internal/pkg/get-tokens"
+	"bin-collections-api/internal/pkg/get-in-page-metadata"
 	"bin-collections-api/internal/pkg/get-config-value"
 	"bin-collections-api/internal/pkg/collection-types"
 )
@@ -24,7 +24,7 @@ type collection struct {
 }
 
 // ForUniqueAddressID gets all available collection dates for a single address 
-func ForUniqueAddressID(t gettokens.Tokens, uniqueAddressID string) <-chan Collections {
+func ForUniqueAddressID(cookie getinpagemetadata.Cookie, uniqueAddressID string) <-chan Collections {
 	c := colly.NewCollector()
 	collectionsChannel := make(chan Collections)
 	collectionTypesChannel := make(chan collectiontypes.CollectionColourRegistry)
@@ -108,13 +108,13 @@ func ForUniqueAddressID(t gettokens.Tokens, uniqueAddressID string) <-chan Colle
 		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
 		[]*http.Cookie {
 			&http.Cookie{
-				Name: t.Cookie[0],
-				Value: t.Cookie[1],
+				Name: cookie[0],
+				Value: cookie[1],
 			},
 		},
 	)
 	
-	c.Visit(fmt.Sprintf(getconfigvalue.ByKey("DATES_URL"), t.InstanceID, uniqueAddressID))
+	c.Visit(fmt.Sprintf(getconfigvalue.ByKey("DATES_URL")))
 
 	return collectionsChannel
 }
