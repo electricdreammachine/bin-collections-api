@@ -1,33 +1,39 @@
 package getcollectiondates
 
 import (
-	"github.com/gocolly/colly"
+	collectiontypes "bin-collections-api/internal/pkg/collection-types"
+	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
+	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
 	"fmt"
-	"regexp"
 	"net/http"
-	"strings"
+	"regexp"
 	"strconv"
-	"bin-collections-api/internal/pkg/get-in-page-metadata"
-	"bin-collections-api/internal/pkg/get-config-value"
-	"bin-collections-api/internal/pkg/collection-types"
+	"strings"
+
+	"github.com/gocolly/colly"
 )
 
 // Collections describes the collections available in the date range
 type Collections struct {
-	Dates []collection `json:"dates"`
+	Dates []collection      `json:"dates"`
 	Types map[string]string `json:"types"`
 }
 
 type collection struct {
 	Type []string `json:"type"`
-	Date string `json:"date"`
+	Date string   `json:"date"`
 }
 
-// ForUniqueAddressID gets all available collection dates for a single address 
-func ForUniqueAddressID(cookie getinpagemetadata.Cookie, uniqueAddressID string) <-chan Collections {
+// ForUniqueAddressID gets all available collection dates for a single address
+func ForUniqueAddressID(cookie getinpagemetadata.Cookie) <-chan Collections {
+	fmt.Println(cookie)
 	c := colly.NewCollector()
 	collectionsChannel := make(chan Collections)
 	collectionTypesChannel := make(chan collectiontypes.CollectionColourRegistry)
+
+	c.OnHTML("body", func(e *colly.HTMLElement) {
+		fmt.Println(e)
+	})
 
 	c.OnHTML(getconfigvalue.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
 		keyText := e.Text
@@ -35,19 +41,19 @@ func ForUniqueAddressID(cookie getinpagemetadata.Cookie, uniqueAddressID string)
 			getconfigvalue.ByKey("KEY_REGEX"),
 		)
 
-		if (keyRegex.Match([]byte(keyText))) {
+		if keyRegex.Match([]byte(keyText)) {
 			cells := e.DOM.Find("td")
-			cellGroupSize,_ := strconv.Atoi(getconfigvalue.ByKey("KEY_CELLS_GROUP_SIZE"))
+			cellGroupSize, _ := strconv.Atoi(getconfigvalue.ByKey("KEY_CELLS_GROUP_SIZE"))
 			var collectionTypes []collectiontypes.CollectionColourRegistryEntry
 
 			for i := 0; i < cells.Length(); i = i + cellGroupSize {
-				targetAttribute,_ := cells.Eq(i).Attr("style")
+				targetAttribute, _ := cells.Eq(i).Attr("style")
 				colourRegex := regexp.MustCompile(
 					getconfigvalue.ByKey("COLOR_FIND_REGEX"),
 				)
 				collectionTypes = append(collectionTypes,
 					collectiontypes.CollectionColourRegistryEntry{
-						Colour: string(colourRegex.Find([]byte(targetAttribute))),
+						Colour:   string(colourRegex.Find([]byte(targetAttribute))),
 						TypeName: strings.Title(strings.ToLower(strings.TrimSpace(cells.Eq(i + 1).Text()))),
 					},
 				)
@@ -55,7 +61,7 @@ func ForUniqueAddressID(cookie getinpagemetadata.Cookie, uniqueAddressID string)
 
 			go func() {
 				collectionTypesChannel <- collectiontypes.NewCollectionColourRegistry(collectionTypes)
-	
+
 				close(collectionTypesChannel)
 			}()
 		}
@@ -68,23 +74,23 @@ func ForUniqueAddressID(cookie getinpagemetadata.Cookie, uniqueAddressID string)
 		)
 
 		unprocessedDateValues := strings.Split(datesArrayRegex.FindStringSubmatch(scriptText)[1], ",")
-		cellGroupSize,_ := strconv.Atoi(getconfigvalue.ByKey("DATES_GROUP_SIZE"))
-		types := <- collectionTypesChannel
+		cellGroupSize, _ := strconv.Atoi(getconfigvalue.ByKey("DATES_GROUP_SIZE"))
+		types := <-collectionTypesChannel
 		var dates Collections
 
 		for i := 0; i < len(unprocessedDateValues); i = i + cellGroupSize {
-			unprocessedTypes := []string{unprocessedDateValues[i + 1], unprocessedDateValues[i + 2]}
+			unprocessedTypes := []string{unprocessedDateValues[i+1], unprocessedDateValues[i+2]}
 			var typeIndices []string
 			for _, unprocessedType := range unprocessedTypes {
-				if (len(strings.TrimSpace(unprocessedType[1 : len(unprocessedType) - 1])) > 0) {
-					typeIndices = append(typeIndices, strconv.Itoa(types[unprocessedType[1 : len(unprocessedType) - 1]].Index))
+				if len(strings.TrimSpace(unprocessedType[1:len(unprocessedType)-1])) > 0 {
+					typeIndices = append(typeIndices, strconv.Itoa(types[unprocessedType[1:len(unprocessedType)-1]].Index))
 				}
 			}
 
 			dates.Dates = append(dates.Dates,
 				collection{
 					Type: typeIndices,
-					Date: unprocessedDateValues[i][1 : len(unprocessedDateValues[i]) - 1],
+					Date: unprocessedDateValues[i][1 : len(unprocessedDateValues[i])-1],
 				},
 			)
 		}
@@ -106,14 +112,14 @@ func ForUniqueAddressID(cookie getinpagemetadata.Cookie, uniqueAddressID string)
 
 	c.SetCookies(
 		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
-		[]*http.Cookie {
+		[]*http.Cookie{
 			&http.Cookie{
-				Name: cookie[0],
+				Name:  cookie[0],
 				Value: cookie[1],
 			},
 		},
 	)
-	
+
 	c.Visit(fmt.Sprintf(getconfigvalue.ByKey("DATES_URL")))
 
 	return collectionsChannel

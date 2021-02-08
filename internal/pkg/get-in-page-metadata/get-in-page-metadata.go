@@ -1,14 +1,14 @@
 package getinpagemetadata
 
 import (
-	"strings"
-	"fmt"
-	"regexp"
-	"log"
-	"reflect"
-	"github.com/gocolly/colly"
+	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
 	"encoding/json"
-	"bin-collections-api/internal/pkg/get-config-value"
+	"fmt"
+	"log"
+	"regexp"
+	"strings"
+
+	"github.com/gocolly/colly"
 )
 
 // Cookie contains cookie headers
@@ -16,33 +16,34 @@ type Cookie []string
 
 // MetaDataItem contains all the metadata needing to be added to requests
 type MetaDataItem struct {
-	Name string
-	Path string
-	Value interface{}
-	DomSelector string
-	Format map[string]string
+	Name         string
+	Path         string
+	Value        interface{}
+	DomSelector  string
+	Format       map[string]string
+	ValueFromMap string
 }
 
 // MetaData f
 type MetaData struct {
-	Cookie Cookie
+	Cookie   Cookie
 	MetaData []MetaDataItem
 }
 
 // UnmarshalJSON Custom unmarshaler
 func (t *MetaDataItem) UnmarshalJSON(data []byte) error {
-  type metaDataItemAlias MetaDataItem
-  var iteratee metaDataItemAlias
+	type metaDataItemAlias MetaDataItem
+	var iteratee metaDataItemAlias
 
 	_ = json.Unmarshal(data, &iteratee)
-	
-	if (len(iteratee.DomSelector) <= 0) {
+
+	if len(iteratee.DomSelector) <= 0 {
 		iteratee.DomSelector = fmt.Sprintf("[name=\"%v\"]", iteratee.Name)
 	}
 
 	*t = MetaDataItem(iteratee)
 
-  return nil
+	return nil
 }
 
 // GetTokens will make a network request for required ephemeral tokens
@@ -66,32 +67,9 @@ func GetTokens() <-chan MetaData {
 
 		err2 := json.Unmarshal(objmap["values"], &values)
 
-		for i, v := range values {
-			var value string
-			fmt.Println(v.DomSelector)
-			value, _ = e.DOM.Find(v.DomSelector).Attr("value")
-
-			if (len(v.Format) > 0) {
-				// use reflect to get field
-				for formatKey, formatVal := range v.Format {
-					if (formatVal == "value") {
-						v.Format[formatKey] = value
-						continue
-					}
-
-					if (len(formatVal) > 0) {
-						rv := reflect.ValueOf(v)
-						v.Format[formatKey] = reflect.Indirect(rv).FieldByName(strings.Title(strings.ToLower(strings.TrimSpace(formatVal)))).String()
-						continue
-					}
-				}
-
-				v.Value = v.Format
-			}
-
-			values[i] = v
-		}
-
+		// fmt.Println(values)
+		values = Populate(e, values)
+		// fmt.Println(values)
 		if err2 != nil {
 			log.Fatal(err2)
 		}
@@ -105,7 +83,7 @@ func GetTokens() <-chan MetaData {
 
 		go func() {
 			channel <- MetaData{
-				Cookie: strings.Split(string(matchingSubGroups), "="),
+				Cookie:   strings.Split(string(matchingSubGroups), "="),
 				MetaData: values,
 			}
 		}()

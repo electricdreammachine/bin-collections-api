@@ -1,28 +1,31 @@
 package submitflowchange
 
 import (
-	"bin-collections-api/internal/pkg/get-in-page-metadata"
-	"net/http"
+	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
 	"bytes"
-	"log"
-	"github.com/tidwall/sjson"
+	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
+
+	"github.com/tidwall/sjson"
 )
 
 // Submit makes submit request
-func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan bool {
-	channel := make(chan bool)
-	requiredMetaData := <- getinpagemetadata.GetTokens()
-	client := &http.Client{} 
-
-	for _, v := range additionalValues {
-		requiredMetaData.MetaData = append(requiredMetaData.MetaData, v)
-	}
+func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan []string {
+	channel := make(chan []string)
+	requiredMetaData := <-getinpagemetadata.GetTokens()
+	client := &http.Client{}
 
 	data := ""
 
-	for _, v := range requiredMetaData.MetaData {
+	fmt.Println(additionalValues)
+
+	fmt.Println(append(requiredMetaData.MetaData, additionalValues...))
+
+	for _, v := range append(requiredMetaData.MetaData, getinpagemetadata.Populate(nil, additionalValues)...) {
 		data, _ = sjson.Set(data, v.Path, v.Value)
+		fmt.Println(data)
 	}
 
 	req, err := http.NewRequest(
@@ -31,7 +34,7 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan bool {
 		bytes.NewBuffer([]byte(data)),
 	)
 
-	if (err != nil) {
+	if err != nil {
 		log.Fatal("woops")
 	}
 
@@ -41,9 +44,13 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan bool {
 
 	defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	ioutil.ReadAll(resp.Body)
 
-	log.Println(string(body))
+	// log.Println(string(body))
+
+	go func() {
+		channel <- requiredMetaData.Cookie
+	}()
 
 	return channel
 }

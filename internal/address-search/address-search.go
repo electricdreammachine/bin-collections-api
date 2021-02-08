@@ -1,47 +1,58 @@
 package addresssearch
 
 import (
+	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
+	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
+	submitflowchange "bin-collections-api/internal/pkg/submit-flow-change"
 	"encoding/json"
 	"io/ioutil"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
-	"bin-collections-api/internal/pkg/get-config-value"
 )
 
 // JSON generic json type
 type JSON map[string]interface{}
 
+type AddressSearch map[string]interface{}
+
+type additionalDataSchema struct {
+	values []getinpagemetadata.MetaDataItem
+}
+
 // FindAddressByPostCode decodes json request body for a postcode used to search for possible address entities
 func FindAddressByPostCode(w http.ResponseWriter, r *http.Request) {
-	type AddressSearch struct {
-		PostCode string `json:"postCode"`
+	var parsedSchema additionalDataSchema
+	metaDataSchema := getconfigvalue.ByKey("ADDITIONAL_ADDRESS_SEARCH_METADATA")
+	err := json.Unmarshal([]byte(metaDataSchema), &parsedSchema)
+
+	if err != nil {
+		log.Fatal(err)
 	}
 
 	requestBody := json.NewDecoder(r.Body)
 
 	var search AddressSearch
-	err := requestBody.Decode(&search)
+	err2 := requestBody.Decode(&search)
 
 	spaceClient := http.Client{
-		Timeout: time.Second * 15, // Maximum of 2 secs
+		Timeout: time.Second * 15,
 	}
 
-	fmt.Println(getconfigvalue.ByKey("ADDRESS_SEARCH_URL"))
+	for _, v := range parsedSchema.values {
+		if len(v.ValueFromMap) > 0 {
+			v.Value = search[v.ValueFromMap]
+		}
+	}
 
-	req, err := http.NewRequest(http.MethodGet, getconfigvalue.ByKey("ADDRESS_SEARCH_URL"), nil)
-	if err != nil {
-		log.Fatal(err)
+	submitflowchange.Submit(parsedSchema.values)
+
+	req, _ := http.NewRequest(http.MethodGet, getconfigvalue.ByKey("ADDRESS_SEARCH_URL"), nil)
+	if err2 != nil {
+		log.Fatal(err2)
 	}
 
 	q := req.URL.Query()
-	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_1_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_1_VALUE"))
-	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_2_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_2_VALUE"))
-	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_3_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_3_VALUE"))
-	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_4_KEY"), search.PostCode)
-	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_5_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_5_VALUE"))
-	q.Add(getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_6_KEY"), getconfigvalue.ByKey("ADDRESS_SEARCH_PARAM_6_VALUE"))
 	req.URL.RawQuery = q.Encode()
 
 	res, getErr := spaceClient.Do(req)
