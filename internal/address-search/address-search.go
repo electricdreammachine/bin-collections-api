@@ -5,10 +5,9 @@ import (
 	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
 	submitflowchange "bin-collections-api/internal/pkg/submit-flow-change"
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
-	"time"
 )
 
 // JSON generic json type
@@ -17,7 +16,7 @@ type JSON map[string]interface{}
 type AddressSearch map[string]interface{}
 
 type additionalDataSchema struct {
-	values []getinpagemetadata.MetaDataItem
+	Values []getinpagemetadata.MetaDataItem
 }
 
 // FindAddressByPostCode decodes json request body for a postcode used to search for possible address entities
@@ -33,44 +32,21 @@ func FindAddressByPostCode(w http.ResponseWriter, r *http.Request) {
 	requestBody := json.NewDecoder(r.Body)
 
 	var search AddressSearch
-	err2 := requestBody.Decode(&search)
+	requestDecodeError := requestBody.Decode(&search)
 
-	spaceClient := http.Client{
-		Timeout: time.Second * 15,
+	if requestDecodeError != nil {
+		fmt.Println(requestDecodeError)
 	}
 
-	for _, v := range parsedSchema.values {
+	for i, v := range parsedSchema.Values {
 		if len(v.ValueFromMap) > 0 {
 			v.Value = search[v.ValueFromMap]
 		}
+		parsedSchema.Values[i] = v
 	}
 
-	submitflowchange.Submit(parsedSchema.values)
+	cookie := <-submitflowchange.Submit(parsedSchema.Values)
+	addresses := ForPostCode(cookie)
 
-	req, _ := http.NewRequest(http.MethodGet, getconfigvalue.ByKey("ADDRESS_SEARCH_URL"), nil)
-	if err2 != nil {
-		log.Fatal(err2)
-	}
-
-	q := req.URL.Query()
-	req.URL.RawQuery = q.Encode()
-
-	res, getErr := spaceClient.Do(req)
-	if getErr != nil {
-		log.Fatal(getErr)
-	}
-
-	body, readErr := ioutil.ReadAll(res.Body)
-	if readErr != nil {
-		log.Fatal(readErr)
-	}
-
-	var pdata JSON
-
-	jsonErr := json.Unmarshal(body, &pdata)
-	if jsonErr != nil {
-		log.Fatal(jsonErr)
-	}
-
-	json.NewEncoder(w).Encode(pdata)
+	fmt.Println(addresses)
 }

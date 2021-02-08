@@ -1,23 +1,23 @@
 package submitflowchange
 
 import (
+	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
 	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
 	"bytes"
 	"fmt"
-	"io/ioutil"
-	"log"
 	"net/http"
 
+	"github.com/gocolly/colly"
 	"github.com/tidwall/sjson"
 )
 
 // Submit makes submit request
 func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan []string {
+	c := colly.NewCollector()
 	channel := make(chan []string)
 	requiredMetaData := <-getinpagemetadata.GetTokens()
-	client := &http.Client{}
 
-	data := ""
+	data := make(map[string]string)
 
 	fmt.Println(additionalValues)
 
@@ -28,25 +28,24 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan []string {
 		fmt.Println(data)
 	}
 
-	req, err := http.NewRequest(
-		"POST",
+	c.OnResponse(func(e *colly.Response) {
+		fmt.Println(e)
+	})
+
+	c.SetCookies(
+		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
+		[]*http.Cookie{
+			&http.Cookie{
+				Name:  requiredMetaData.Cookie[0],
+				Value: requiredMetaData.Cookie[1],
+			},
+		},
+	)
+
+	c.Post(
 		"https://iweb.itouchvision.com/portal/wwv_flow.accept",
 		bytes.NewBuffer([]byte(data)),
 	)
-
-	if err != nil {
-		log.Fatal("woops")
-	}
-
-	req.Header.Add(requiredMetaData.Cookie[0], requiredMetaData.Cookie[1])
-
-	resp, _ := client.Do(req)
-
-	defer resp.Body.Close()
-
-	ioutil.ReadAll(resp.Body)
-
-	// log.Println(string(body))
 
 	go func() {
 		channel <- requiredMetaData.Cookie
