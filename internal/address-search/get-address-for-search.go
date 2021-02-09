@@ -18,11 +18,11 @@ func ForPostCode(cookie getinpagemetadata.Cookie) <-chan []Address {
 	addressesChannel := make(chan []Address)
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
-		fmt.Println(e)
+		// fmt.Println(e)
 	})
 
 	c.OnHTML(getconfigvalue.ByKey("ADDRESSES_SEARCH"), func(e *colly.HTMLElement) {
-		fmt.Println(e.Text)
+		fmt.Println("yes")
 
 		go func() {
 			addressesChannel <- []Address{nil}
@@ -31,10 +31,23 @@ func ForPostCode(cookie getinpagemetadata.Cookie) <-chan []Address {
 		}()
 	})
 
+	c.OnRequest(func(r *colly.Request) {
+		fmt.Println(c.Cookies(getconfigvalue.ByKey("DATES_COOKIE_DOMAIN")))
+	})
+
+	c.OnResponse(func(r *colly.Response) {
+		fmt.Println(string(r.Body))
+	})
+
+	c.OnError(func(r *colly.Response, err error) {
+		fmt.Println(err)
+		fmt.Println(r)
+	})
+
 	c.SetCookies(
 		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
 		[]*http.Cookie{
-			&http.Cookie{
+			{
 				Name:  cookie[0],
 				Value: cookie[1],
 			},
