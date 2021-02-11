@@ -38,8 +38,8 @@ func GetCollectionsForID(w http.ResponseWriter, request *http.Request) {
 		log.Fatal("err2")
 	}
 
-	cookie := <-submitflowchange.Submit(parsedSchema.Values)
-	collectionDates := <-ForUniqueAddressID(cookie)
+	submitResponse := <-submitflowchange.Submit(parsedSchema.Values)
+	collectionDates := <-ForUniqueAddressID(submitResponse.RedirectUrl, submitResponse.Cookie)
 
 	json.NewEncoder(w).Encode(collectionDates)
 }

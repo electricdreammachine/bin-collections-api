@@ -3,7 +3,7 @@ package submitflowchange
 import (
 	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
 	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -11,11 +11,17 @@ import (
 	"github.com/tidwall/sjson"
 )
 
+type redirectMetaData struct {
+	Cookie      []string
+	RedirectUrl string
+}
+
 // Submit makes submit request
-func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan []string {
+func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMetaData {
 	c := colly.NewCollector()
-	channel := make(chan []string)
+	channel := make(chan redirectMetaData)
 	requiredMetaData := <-getinpagemetadata.GetTokens()
+	var flowChangeResponse map[string]string
 
 	data := make(map[string]string)
 
@@ -33,7 +39,7 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan []string {
 	})
 
 	c.OnResponse(func(e *colly.Response) {
-		fmt.Println(e)
+		json.Unmarshal(e.Body, &flowChangeResponse)
 	})
 
 	c.SetCookies(
@@ -52,7 +58,10 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan []string {
 	)
 
 	go func() {
-		channel <- requiredMetaData.Cookie
+		channel <- redirectMetaData{
+			Cookie:      requiredMetaData.Cookie,
+			RedirectUrl: flowChangeResponse["redirectUrl"],
+		}
 	}()
 
 	return channel

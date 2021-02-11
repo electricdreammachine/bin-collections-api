@@ -25,7 +25,7 @@ type collection struct {
 }
 
 // ForUniqueAddressID gets all available collection dates for a single address
-func ForUniqueAddressID(cookie getinpagemetadata.Cookie) <-chan Collections {
+func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Collections {
 	fmt.Println(cookie)
 	c := colly.NewCollector()
 	collectionsChannel := make(chan Collections)
@@ -120,7 +120,7 @@ func ForUniqueAddressID(cookie getinpagemetadata.Cookie) <-chan Collections {
 		},
 	)
 
-	c.Visit(fmt.Sprintf(getconfigvalue.ByKey("DATES_URL")))
+	c.Visit(fmt.Sprintf("%v%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	return collectionsChannel
 }
