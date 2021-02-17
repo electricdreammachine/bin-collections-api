@@ -46,7 +46,7 @@ func FindAddressByPostCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	submitResponse := <-submitflowchange.Submit(parsedSchema.Values)
-	addresses := ForPostCode(submitResponse.Cookie)
+	addresses := ForPostCode(submitResponse.RedirectUrl, submitResponse.Cookie)
 
 	fmt.Println(addresses)
 }

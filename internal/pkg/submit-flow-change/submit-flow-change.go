@@ -40,6 +40,13 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMe
 
 	c.OnResponse(func(e *colly.Response) {
 		json.Unmarshal(e.Body, &flowChangeResponse)
+
+		go func() {
+			channel <- redirectMetaData{
+				Cookie:      requiredMetaData.Cookie,
+				RedirectUrl: flowChangeResponse["redirectURL"],
+			}
+		}()
 	})
 
 	c.SetCookies(
@@ -56,13 +63,6 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMe
 		"https://iweb.itouchvision.com/portal/wwv_flow.accept",
 		data,
 	)
-
-	go func() {
-		channel <- redirectMetaData{
-			Cookie:      requiredMetaData.Cookie,
-			RedirectUrl: flowChangeResponse["redirectUrl"],
-		}
-	}()
 
 	return channel
 }

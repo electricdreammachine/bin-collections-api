@@ -12,10 +12,11 @@ import (
 type Address map[string]interface{}
 
 // ForPostCode gets all available collection dates for a single address
-func ForPostCode(cookie getinpagemetadata.Cookie) <-chan []Address {
+func ForPostCode(url string, cookie getinpagemetadata.Cookie) <-chan []Address {
 	fmt.Println(cookie)
 	c := colly.NewCollector()
 	addressesChannel := make(chan []Address)
+	fmt.Println(fmt.Sprintf("%v%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		// fmt.Println(e)
@@ -54,7 +55,7 @@ func ForPostCode(cookie getinpagemetadata.Cookie) <-chan []Address {
 		},
 	)
 
-	c.Visit(fmt.Sprintf(getconfigvalue.ByKey("DATES_URL")))
+	c.Visit(fmt.Sprintf("%v/portal/%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	return addressesChannel
 }
