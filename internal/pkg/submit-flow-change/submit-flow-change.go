@@ -4,6 +4,7 @@ import (
 	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
 	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -39,6 +40,7 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMe
 	})
 
 	c.OnResponse(func(e *colly.Response) {
+		fmt.Println(string(e.Body))
 		json.Unmarshal(e.Body, &flowChangeResponse)
 
 		go func() {

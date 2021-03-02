@@ -5,6 +5,7 @@ import (
 	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
 	submitflowchange "bin-collections-api/internal/pkg/submit-flow-change"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 )
@@ -40,6 +41,8 @@ func GetCollectionsForID(w http.ResponseWriter, request *http.Request) {
 
 	submitResponse := <-submitflowchange.Submit(parsedSchema.Values)
 	collectionDates := <-ForUniqueAddressID(submitResponse.RedirectUrl, submitResponse.Cookie)
+
+	fmt.Println(collectionDates)
 
 	json.NewEncoder(w).Encode(collectionDates)
 }

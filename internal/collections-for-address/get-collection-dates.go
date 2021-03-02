@@ -26,17 +26,17 @@ type collection struct {
 
 // ForUniqueAddressID gets all available collection dates for a single address
 func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Collections {
-	fmt.Println(cookie)
 	c := colly.NewCollector()
 	collectionsChannel := make(chan Collections)
 	collectionTypesChannel := make(chan collectiontypes.CollectionColourRegistry)
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
-		fmt.Println(e)
+		// fmt.Println(e)
 	})
 
 	c.OnHTML(getconfigvalue.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
-		keyText := e.Text
+		spacePattern := regexp.MustCompile(`\s|\p{Z}`)
+		keyText := spacePattern.ReplaceAllString(e.Text, "")
 		keyRegex := regexp.MustCompile(
 			getconfigvalue.ByKey("KEY_REGEX"),
 		)
@@ -47,7 +47,8 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 			var collectionTypes []collectiontypes.CollectionColourRegistryEntry
 
 			for i := 0; i < cells.Length(); i = i + cellGroupSize {
-				targetAttribute, _ := cells.Eq(i).Attr("style")
+				targetAttribute, _ := cells.Eq(i).Children().Eq(0).Attr("style")
+				fmt.Println(targetAttribute)
 				colourRegex := regexp.MustCompile(
 					getconfigvalue.ByKey("COLOR_FIND_REGEX"),
 				)
@@ -73,12 +74,17 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 			getconfigvalue.ByKey("DATES_REGEX"),
 		)
 
-		unprocessedDateValues := strings.Split(datesArrayRegex.FindStringSubmatch(scriptText)[1], ",")
-		cellGroupSize, _ := strconv.Atoi(getconfigvalue.ByKey("DATES_GROUP_SIZE"))
+		delimitedDateGroups := strings.ReplaceAll(datesArrayRegex.FindStringSubmatch(scriptText)[1], "\"", "")
+		splitRegex := regexp.MustCompile(",{2,}")
+		unprocessedDateValues := splitRegex.Split(delimitedDateGroups, -1)
+		// cellGroupSize, _ := strconv.Atoi(getconfigvalue.ByKey("DATES_GROUP_SIZE"))
 		types := <-collectionTypesChannel
 		var dates Collections
 
-		for i := 0; i < len(unprocessedDateValues); i = i + cellGroupSize {
+		fmt.Println(unprocessedDateValues)
+
+		for i := 0; i < len(unprocessedDateValues); i = i + 1 {
+			fmt.Println(unprocessedDateValues[i])
 			unprocessedTypes := []string{unprocessedDateValues[i+1], unprocessedDateValues[i+2]}
 			var typeIndices []string
 			for _, unprocessedType := range unprocessedTypes {
@@ -113,14 +119,14 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 	c.SetCookies(
 		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
 		[]*http.Cookie{
-			&http.Cookie{
+			{
 				Name:  cookie[0],
 				Value: cookie[1],
 			},
 		},
 	)
 
-	c.Visit(fmt.Sprintf("%v%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
+	c.Visit(fmt.Sprintf("%v/portal/%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	return collectionsChannel
 }
