@@ -30,10 +30,6 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 	collectionsChannel := make(chan Collections)
 	collectionTypesChannel := make(chan collectiontypes.CollectionColourRegistry)
 
-	c.OnHTML("body", func(e *colly.HTMLElement) {
-		// fmt.Println(e)
-	})
-
 	c.OnHTML(getconfigvalue.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
 		spacePattern := regexp.MustCompile(`\s|\p{Z}`)
 		keyText := spacePattern.ReplaceAllString(e.Text, "")
@@ -77,26 +73,28 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 		delimitedDateGroups := strings.ReplaceAll(datesArrayRegex.FindStringSubmatch(scriptText)[1], "\"", "")
 		splitRegex := regexp.MustCompile(",{2,}")
 		unprocessedDateValues := splitRegex.Split(delimitedDateGroups, -1)
-		// cellGroupSize, _ := strconv.Atoi(getconfigvalue.ByKey("DATES_GROUP_SIZE"))
 		types := <-collectionTypesChannel
 		var dates Collections
 
-		fmt.Println(unprocessedDateValues)
+		for _, v := range unprocessedDateValues {
+			dateValueParts := strings.Split(v, ",")
 
-		for i := 0; i < len(unprocessedDateValues); i = i + 1 {
-			fmt.Println(unprocessedDateValues[i])
-			unprocessedTypes := []string{unprocessedDateValues[i+1], unprocessedDateValues[i+2]}
+			if (len(dateValueParts)) == 1 {
+				continue
+			}
+
+			date, unprocessedTypes := dateValueParts[0], dateValueParts[1:]
 			var typeIndices []string
 			for _, unprocessedType := range unprocessedTypes {
-				if len(strings.TrimSpace(unprocessedType[1:len(unprocessedType)-1])) > 0 {
-					typeIndices = append(typeIndices, strconv.Itoa(types[unprocessedType[1:len(unprocessedType)-1]].Index))
+				if len(strings.TrimSpace(unprocessedType)) > 0 {
+					typeIndices = append(typeIndices, strconv.Itoa(types[unprocessedType].Index))
 				}
 			}
 
 			dates.Dates = append(dates.Dates,
 				collection{
 					Type: typeIndices,
-					Date: unprocessedDateValues[i][1 : len(unprocessedDateValues[i])-1],
+					Date: date,
 				},
 			)
 		}
