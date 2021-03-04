@@ -1,6 +1,7 @@
-package getinpagemetadata
+package scraperservice
 
 import (
+	"bin-collections-api/internal/models"
 	"fmt"
 	"reflect"
 	"strings"
@@ -8,7 +9,8 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func Populate(html *colly.HTMLElement, schema []MetaDataItem) []MetaDataItem {
+// Populate f
+func Populate(html *colly.HTMLElement, schema []models.MetaDataItem) []models.MetaDataItem {
 	for i, v := range schema {
 		var value string
 

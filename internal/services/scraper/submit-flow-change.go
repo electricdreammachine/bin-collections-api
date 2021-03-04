@@ -1,8 +1,8 @@
-package submitflowchange
+package scraperservice
 
 import (
-	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
-	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
+	models "bin-collections-api/internal/models"
+	config "bin-collections-api/internal/services/config"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,21 +12,18 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-type redirectMetaData struct {
-	Cookie      []string
-	RedirectUrl string
-}
-
 // Submit makes submit request
-func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMetaData {
+func Submit(additionalValues []models.MetaDataItem) <-chan models.RedirectMetaData {
 	c := colly.NewCollector()
-	channel := make(chan redirectMetaData)
-	requiredMetaData := <-getinpagemetadata.GetTokens()
+	channel := make(chan models.RedirectMetaData)
+	requiredMetaData := <-GetTokens()
 	var flowChangeResponse map[string]string
 
 	data := make(map[string]string)
 
-	for _, v := range append(requiredMetaData.MetaData, getinpagemetadata.Populate(nil, additionalValues)...) {
+	fmt.Println(requiredMetaData)
+
+	for _, v := range append(requiredMetaData.MetaData, Populate(nil, additionalValues)...) {
 		if len(v.Path) == 0 {
 			data[v.Name] = v.Value.(string)
 		} else {
@@ -35,16 +32,18 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMe
 		}
 	}
 
+	fmt.Println(data)
+
 	c.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
 	})
 
 	c.OnResponse(func(e *colly.Response) {
-		fmt.Println(string(e.Body))
 		json.Unmarshal(e.Body, &flowChangeResponse)
+		fmt.Println(flowChangeResponse)
 
 		go func() {
-			channel <- redirectMetaData{
+			channel <- models.RedirectMetaData{
 				Cookie:      requiredMetaData.Cookie,
 				RedirectUrl: flowChangeResponse["redirectURL"],
 			}
@@ -52,7 +51,7 @@ func Submit(additionalValues []getinpagemetadata.MetaDataItem) <-chan redirectMe
 	})
 
 	c.SetCookies(
-		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
+		config.ByKey("DATES_COOKIE_DOMAIN"),
 		[]*http.Cookie{
 			{
 				Name:  requiredMetaData.Cookie[0],

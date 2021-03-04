@@ -1,28 +1,25 @@
 package addresssearch
 
 import (
-	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
-	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
-	submitflowchange "bin-collections-api/internal/pkg/submit-flow-change"
+	"bin-collections-api/internal/models"
+	config "bin-collections-api/internal/services/config"
+	submitflowchange "bin-collections-api/internal/services/scraper"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 )
 
-// JSON generic json type
-type JSON map[string]interface{}
-
 type AddressSearch map[string]interface{}
 
 type additionalDataSchema struct {
-	Values []getinpagemetadata.MetaDataItem
+	Values []models.MetaDataItem
 }
 
 // FindAddressByPostCode decodes json request body for a postcode used to search for possible address entities
 func FindAddressByPostCode(w http.ResponseWriter, r *http.Request) {
 	var parsedSchema additionalDataSchema
-	metaDataSchema := getconfigvalue.ByKey("ADDITIONAL_ADDRESS_SEARCH_METADATA")
+	metaDataSchema := config.ByKey("ADDITIONAL_ADDRESS_SEARCH_METADATA")
 	err := json.Unmarshal([]byte(metaDataSchema), &parsedSchema)
 
 	if err != nil {

@@ -1,36 +1,37 @@
-package collectiontypes
+package models
 
 import (
-	"log"
+	config "bin-collections-api/internal/services/config"
 	"encoding/json"
-	"bin-collections-api/internal/pkg/get-config-value"
+	"log"
 )
 
 // CollectionColourRegistryEntry f
 type CollectionColourRegistryEntry struct {
-	Colour string
+	Colour   string
 	TypeName string
 }
 
-type indexedCollectionColourRegistryEntry struct {
+// IndexedCollectionColourRegistryEntry f
+type IndexedCollectionColourRegistryEntry struct {
 	CollectionColourRegistryEntry
 	Index int
 }
 
 // CollectionColourRegistry f
-type CollectionColourRegistry map[string]indexedCollectionColourRegistryEntry
+type CollectionColourRegistry map[string]IndexedCollectionColourRegistryEntry
 
 // NewCollectionColourRegistry f
 func NewCollectionColourRegistry(colourTypesEntries []CollectionColourRegistryEntry) CollectionColourRegistry {
 	var registry CollectionColourRegistry
-	err := json.Unmarshal([]byte(getconfigvalue.ByKey("DEFAULT_COLLECTION_TYPES_BY_COLOUR")), &registry)
+	err := json.Unmarshal([]byte(config.ByKey("DEFAULT_COLLECTION_TYPES_BY_COLOUR")), &registry)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for index, entry := range colourTypesEntries {
-		registry[entry.Colour] = indexedCollectionColourRegistryEntry{
+		registry[entry.Colour] = IndexedCollectionColourRegistryEntry{
 			entry,
 			index,
 		}

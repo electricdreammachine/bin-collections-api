@@ -1,11 +1,9 @@
 package getcollectiondates
 
 import (
-	collectiontypes "bin-collections-api/internal/pkg/collection-types"
-	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
-	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
+	"bin-collections-api/internal/models"
+	config "bin-collections-api/internal/services/config"
 	"fmt"
-	"net/http"
 	"regexp"
 	"strconv"
 	"strings"
@@ -13,43 +11,31 @@ import (
 	"github.com/gocolly/colly"
 )
 
-// Collections describes the collections available in the date range
-type Collections struct {
-	Dates []collection      `json:"dates"`
-	Types map[string]string `json:"types"`
-}
-
-type collection struct {
-	Type []string `json:"type"`
-	Date string   `json:"date"`
-}
-
 // ForUniqueAddressID gets all available collection dates for a single address
-func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Collections {
-	c := colly.NewCollector()
-	collectionsChannel := make(chan Collections)
-	collectionTypesChannel := make(chan collectiontypes.CollectionColourRegistry)
+func ForUniqueAddressID(collector colly.Collector) <-chan models.Collections {
+	collectionsChannel := make(chan models.Collections)
+	collectionTypesChannel := make(chan models.CollectionColourRegistry)
 
-	c.OnHTML(getconfigvalue.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
+	collector.OnHTML(config.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
 		spacePattern := regexp.MustCompile(`\s|\p{Z}`)
 		keyText := spacePattern.ReplaceAllString(e.Text, "")
 		keyRegex := regexp.MustCompile(
-			getconfigvalue.ByKey("KEY_REGEX"),
+			config.ByKey("KEY_REGEX"),
 		)
 
 		if keyRegex.Match([]byte(keyText)) {
 			cells := e.DOM.Find("td")
-			cellGroupSize, _ := strconv.Atoi(getconfigvalue.ByKey("KEY_CELLS_GROUP_SIZE"))
-			var collectionTypes []collectiontypes.CollectionColourRegistryEntry
+			cellGroupSize, _ := strconv.Atoi(config.ByKey("KEY_CELLS_GROUP_SIZE"))
+			var collectionTypes []models.CollectionColourRegistryEntry
 
 			for i := 0; i < cells.Length(); i = i + cellGroupSize {
 				targetAttribute, _ := cells.Eq(i).Children().Eq(0).Attr("style")
 				fmt.Println(targetAttribute)
 				colourRegex := regexp.MustCompile(
-					getconfigvalue.ByKey("COLOR_FIND_REGEX"),
+					config.ByKey("COLOR_FIND_REGEX"),
 				)
 				collectionTypes = append(collectionTypes,
-					collectiontypes.CollectionColourRegistryEntry{
+					models.CollectionColourRegistryEntry{
 						Colour:   string(colourRegex.Find([]byte(targetAttribute))),
 						TypeName: strings.Title(strings.ToLower(strings.TrimSpace(cells.Eq(i + 1).Text()))),
 					},
@@ -57,24 +43,25 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 			}
 
 			go func() {
-				collectionTypesChannel <- collectiontypes.NewCollectionColourRegistry(collectionTypes)
+				collectionTypesChannel <- models.NewCollectionColourRegistry(collectionTypes)
 
 				close(collectionTypesChannel)
 			}()
 		}
 	})
 
-	c.OnHTML(getconfigvalue.ByKey("DATES_ELEMENT"), func(e *colly.HTMLElement) {
+	collector.OnHTML(config.ByKey("DATES_ELEMENT"), func(e *colly.HTMLElement) {
+		fmt.Println("swag")
 		scriptText := e.Text
 		datesArrayRegex := regexp.MustCompile(
-			getconfigvalue.ByKey("DATES_REGEX"),
+			config.ByKey("DATES_REGEX"),
 		)
 
 		delimitedDateGroups := strings.ReplaceAll(datesArrayRegex.FindStringSubmatch(scriptText)[1], "\"", "")
 		splitRegex := regexp.MustCompile(",{2,}")
 		unprocessedDateValues := splitRegex.Split(delimitedDateGroups, -1)
 		types := <-collectionTypesChannel
-		var dates Collections
+		var dates models.Collections
 
 		for _, v := range unprocessedDateValues {
 			dateValueParts := strings.Split(v, ",")
@@ -92,7 +79,7 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 			}
 
 			dates.Dates = append(dates.Dates,
-				collection{
+				models.Collection{
 					Type: typeIndices,
 					Date: date,
 				},
@@ -113,18 +100,6 @@ func ForUniqueAddressID(url string, cookie getinpagemetadata.Cookie) <-chan Coll
 			close(collectionsChannel)
 		}()
 	})
-
-	c.SetCookies(
-		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
-		[]*http.Cookie{
-			{
-				Name:  cookie[0],
-				Value: cookie[1],
-			},
-		},
-	)
-
-	c.Visit(fmt.Sprintf("%v/portal/%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	return collectionsChannel
 }

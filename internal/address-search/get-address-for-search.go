@@ -1,8 +1,8 @@
 package addresssearch
 
 import (
-	getconfigvalue "bin-collections-api/internal/pkg/get-config-value"
-	getinpagemetadata "bin-collections-api/internal/pkg/get-in-page-metadata"
+	"bin-collections-api/internal/models"
+	config "bin-collections-api/internal/services/config"
 	"fmt"
 	"net/http"
 
@@ -12,17 +12,17 @@ import (
 type Address map[string]interface{}
 
 // ForPostCode gets all available collection dates for a single address
-func ForPostCode(url string, cookie getinpagemetadata.Cookie) <-chan []Address {
+func ForPostCode(url string, cookie models.Cookie) <-chan []Address {
 	fmt.Println(cookie)
 	c := colly.NewCollector()
 	addressesChannel := make(chan []Address)
-	fmt.Println(fmt.Sprintf("%v%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
+	fmt.Println(fmt.Sprintf("%v%v", config.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	c.OnHTML("body", func(e *colly.HTMLElement) {
 		// fmt.Println(e)
 	})
 
-	c.OnHTML(getconfigvalue.ByKey("ADDRESSES_SEARCH"), func(e *colly.HTMLElement) {
+	c.OnHTML(config.ByKey("ADDRESSES_SEARCH"), func(e *colly.HTMLElement) {
 		fmt.Println("yes")
 
 		go func() {
@@ -33,7 +33,7 @@ func ForPostCode(url string, cookie getinpagemetadata.Cookie) <-chan []Address {
 	})
 
 	c.OnRequest(func(r *colly.Request) {
-		fmt.Println(c.Cookies(getconfigvalue.ByKey("DATES_COOKIE_DOMAIN")))
+		fmt.Println(c.Cookies(config.ByKey("DATES_COOKIE_DOMAIN")))
 	})
 
 	c.OnResponse(func(r *colly.Response) {
@@ -46,7 +46,7 @@ func ForPostCode(url string, cookie getinpagemetadata.Cookie) <-chan []Address {
 	})
 
 	c.SetCookies(
-		getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"),
+		config.ByKey("DATES_COOKIE_DOMAIN"),
 		[]*http.Cookie{
 			{
 				Name:  cookie[0],
@@ -55,7 +55,7 @@ func ForPostCode(url string, cookie getinpagemetadata.Cookie) <-chan []Address {
 		},
 	)
 
-	c.Visit(fmt.Sprintf("%v/portal/%v", getconfigvalue.ByKey("DATES_COOKIE_DOMAIN"), url))
+	c.Visit(fmt.Sprintf("%v/portal/%v", config.ByKey("DATES_COOKIE_DOMAIN"), url))
 
 	return addressesChannel
 }
