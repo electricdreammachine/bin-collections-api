@@ -14,7 +14,7 @@ func main() {
 	godotenv.Load(".env.yml")
 	port := os.Getenv("PORT")
 	router := mux.NewRouter().StrictSlash(true)
-	// router.HandleFunc("/address/search", scrapercontroller.GetAddresses).Methods("POST")
+	router.HandleFunc("/address/search", scrapercontroller.GetAddresses).Methods("POST")
 	router.HandleFunc("/collections", scrapercontroller.GetCollectionDates).Methods("POST")
 	log.Fatal(http.ListenAndServe(":"+port, router))
 }

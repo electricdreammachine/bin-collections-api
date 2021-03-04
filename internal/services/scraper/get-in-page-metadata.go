@@ -12,7 +12,6 @@ import (
 	"github.com/gocolly/colly"
 )
 
-// GetTokens will make a network request for required ephemeral tokens
 func GetTokens() <-chan models.MetaData {
 	c := colly.NewCollector()
 	channel := make(chan models.MetaData)

@@ -3,7 +3,6 @@ package getcollectiondates
 import (
 	"bin-collections-api/internal/models"
 	config "bin-collections-api/internal/services/config"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
@@ -11,9 +10,8 @@ import (
 	"github.com/gocolly/colly"
 )
 
-// ForUniqueAddressID gets all available collection dates for a single address
-func ForUniqueAddressID(collector colly.Collector) <-chan models.Collections {
-	collectionsChannel := make(chan models.Collections)
+func ForUniqueAddressID(collector *colly.Collector) <-chan interface{} {
+	collectionsChannel := make(chan interface{})
 	collectionTypesChannel := make(chan models.CollectionColourRegistry)
 
 	collector.OnHTML(config.ByKey("KEY_ELEMENT"), func(e *colly.HTMLElement) {
@@ -30,7 +28,6 @@ func ForUniqueAddressID(collector colly.Collector) <-chan models.Collections {
 
 			for i := 0; i < cells.Length(); i = i + cellGroupSize {
 				targetAttribute, _ := cells.Eq(i).Children().Eq(0).Attr("style")
-				fmt.Println(targetAttribute)
 				colourRegex := regexp.MustCompile(
 					config.ByKey("COLOR_FIND_REGEX"),
 				)
@@ -51,7 +48,6 @@ func ForUniqueAddressID(collector colly.Collector) <-chan models.Collections {
 	})
 
 	collector.OnHTML(config.ByKey("DATES_ELEMENT"), func(e *colly.HTMLElement) {
-		fmt.Println("swag")
 		scriptText := e.Text
 		datesArrayRegex := regexp.MustCompile(
 			config.ByKey("DATES_REGEX"),

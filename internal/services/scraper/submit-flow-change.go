@@ -4,7 +4,6 @@ import (
 	models "bin-collections-api/internal/models"
 	config "bin-collections-api/internal/services/config"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/tidwall/sjson"
 )
 
-// Submit makes submit request
 func Submit(additionalValues []models.MetaDataItem) <-chan models.RedirectMetaData {
 	c := colly.NewCollector()
 	channel := make(chan models.RedirectMetaData)
@@ -20,8 +18,6 @@ func Submit(additionalValues []models.MetaDataItem) <-chan models.RedirectMetaDa
 	var flowChangeResponse map[string]string
 
 	data := make(map[string]string)
-
-	fmt.Println(requiredMetaData)
 
 	for _, v := range append(requiredMetaData.MetaData, Populate(nil, additionalValues)...) {
 		if len(v.Path) == 0 {
@@ -32,20 +28,17 @@ func Submit(additionalValues []models.MetaDataItem) <-chan models.RedirectMetaDa
 		}
 	}
 
-	fmt.Println(data)
-
 	c.OnRequest(func(r *colly.Request) {
 		r.Headers.Set("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
 	})
 
 	c.OnResponse(func(e *colly.Response) {
 		json.Unmarshal(e.Body, &flowChangeResponse)
-		fmt.Println(flowChangeResponse)
 
 		go func() {
 			channel <- models.RedirectMetaData{
 				Cookie:      requiredMetaData.Cookie,
-				RedirectUrl: flowChangeResponse["redirectURL"],
+				RedirectURL: flowChangeResponse["redirectURL"],
 			}
 		}()
 	})

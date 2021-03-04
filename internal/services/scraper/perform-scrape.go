@@ -12,7 +12,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func PerformScrape(requestBody io.Reader, additionalJSONSchemaForScrape string, scrapeCallback func(*colly.Collector) chan interface{}) interface{} {
+func PerformScrape(requestBody io.Reader, additionalJSONSchemaForScrape string, scrapeCallback func(collector *colly.Collector) <-chan interface{}) interface{} {
 	var parsedAdditionalSchema models.AdditionalDataSchema
 	metaDataSchema := additionalJSONSchemaForScrape
 	err := json.Unmarshal([]byte(metaDataSchema), &parsedAdditionalSchema)
@@ -50,7 +50,7 @@ func PerformScrape(requestBody io.Reader, additionalJSONSchemaForScrape string, 
 
 	dataChannel := scrapeCallback(scrapeCollector)
 
-	scrapeCollector.Visit(fmt.Sprintf("%v/portal/%v", config.ByKey("DATES_COOKIE_DOMAIN"), submitFlowChangeResponse.RedirectUrl))
+	scrapeCollector.Visit(fmt.Sprintf("%v/portal/%v", config.ByKey("DATES_COOKIE_DOMAIN"), submitFlowChangeResponse.RedirectURL))
 
 	dataFromPage := <-dataChannel
 

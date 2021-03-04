@@ -9,7 +9,6 @@ import (
 	"github.com/gocolly/colly"
 )
 
-// Populate f
 func Populate(html *colly.HTMLElement, schema []models.MetaDataItem) []models.MetaDataItem {
 	for i, v := range schema {
 		var value string

@@ -5,10 +5,8 @@ import (
 	"fmt"
 )
 
-// Cookie contains cookie headers
 type Cookie []string
 
-// MetaDataItem contains all the metadata needing to be added to requests
 type MetaDataItem struct {
 	Name         string
 	Path         string
@@ -18,19 +16,16 @@ type MetaDataItem struct {
 	ValueFromMap string
 }
 
-// MetaData f
 type MetaData struct {
 	Cookie   Cookie
 	MetaData []MetaDataItem
 }
 
-// RedirectMetaData f
 type RedirectMetaData struct {
 	Cookie      []string
-	RedirectUrl string
+	RedirectURL string
 }
 
-// UnmarshalJSON Custom unmarshaler
 func (t *MetaDataItem) UnmarshalJSON(data []byte) error {
 	type metaDataItemAlias MetaDataItem
 	var iteratee metaDataItemAlias
