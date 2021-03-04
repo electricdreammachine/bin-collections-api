@@ -3,18 +3,24 @@ package addresssearch
 import (
 	"bin-collections-api/internal/models"
 	config "bin-collections-api/internal/services/config"
-	"fmt"
 
 	"github.com/gocolly/colly"
 )
 
 func ForPostCode(collector *colly.Collector) <-chan interface{} {
 	addressesChannel := make(chan interface{})
+	var addresses []models.Address
 
 	collector.OnHTML(config.ByKey("ADDRESSES_SEARCH"), func(e *colly.HTMLElement) {
-		fmt.Println(e)
+		addresses = append(addresses, models.Address{
+			AddressStr: e.Text,
+			ID:         e.Attr("value"),
+		})
+	})
+
+	collector.OnScraped(func(r *colly.Response) {
 		go func() {
-			addressesChannel <- []models.Address{}
+			addressesChannel <- addresses
 
 			close(addressesChannel)
 		}()

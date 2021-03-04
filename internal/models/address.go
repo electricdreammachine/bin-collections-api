@@ -1,6 +1,6 @@
 package models
 
 type Address struct {
-	AddressStr []string
-	ID         int
+	AddressStr string `json:"address"`
+	ID         string `json:"id"`
 }
