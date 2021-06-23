@@ -50,7 +50,7 @@ func PerformScrape(requestBody io.Reader, additionalJSONSchemaForScrape string, 
 
 	dataChannel := scrapeCallback(scrapeCollector)
 
-	scrapeCollector.Visit(fmt.Sprintf("%v/portal/%v", config.ByKey("DATES_COOKIE_DOMAIN"), submitFlowChangeResponse.RedirectURL))
+	scrapeCollector.Visit(fmt.Sprintf("%v%v", config.ByKey("DATES_COOKIE_DOMAIN"), submitFlowChangeResponse.RedirectURL))
 
 	dataFromPage := <-dataChannel
 

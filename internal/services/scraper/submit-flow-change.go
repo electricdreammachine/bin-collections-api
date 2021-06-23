@@ -24,7 +24,13 @@ func Submit(additionalValues []models.MetaDataItem) <-chan models.RedirectMetaDa
 			data[v.Name] = v.Value.(string)
 		} else {
 			pathSeparatedByParent := strings.SplitN(v.Path, ".", 2)
-			data[pathSeparatedByParent[0]], _ = sjson.Set(data[pathSeparatedByParent[0]], pathSeparatedByParent[1], v.Value)
+			
+			if (v.Value == "[]") {
+				value, _ := v.Value.(string)
+				data[pathSeparatedByParent[0]], _ = sjson.SetRaw(data[pathSeparatedByParent[0]], pathSeparatedByParent[1], value)
+			} else {
+				data[pathSeparatedByParent[0]], _ = sjson.Set(data[pathSeparatedByParent[0]], pathSeparatedByParent[1], v.Value)
+			}
 		}
 	}
 
