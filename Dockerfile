@@ -1,6 +1,5 @@
 FROM golang:alpine
 
-# Set necessary environmet variables needed for our image
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
@@ -8,29 +7,24 @@ ENV GO111MODULE=on \
     PORT=3000
 
 # Move to working directory /build
-# WORKDIR /build
+WORKDIR /build
 
 # Copy and download dependency using go mod
-# COPY go.mod .
-# COPY go.sum .
-# RUN go mod download
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
 
 # # Copy the code into the container
-# COPY . .
-
-# RUN echo $(ls -1 ./cmd/bin-collections/)
+COPY . .
 
 # # Build the application
-# RUN go build -o main ./cmd/bin-collections/main.go
+RUN go build -o main ./cmd/bin-collections/main.go
 
 # Move to /dist directory as the place for resulting binary folder
 WORKDIR /dist
 
-# # Copy binary from build to main folder
-# RUN cp /build/main /build/.env.yml .
-
-# Export necessary port
-EXPOSE 3000
+# Copy binary from build to main folder
+RUN cp /build/main .
 
 # Command to run when starting the container
-CMD ["ls"]
+CMD ["./main"]
