@@ -1,4 +1,4 @@
-FROM golang:alpine
+FROM golang:latest
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
@@ -25,6 +25,8 @@ WORKDIR /dist
 
 # Copy binary from build to main folder
 RUN cp /build/main .
+
+RUN mkdir -p config
 
 # Command to run when starting the container
 CMD ["./main"]
