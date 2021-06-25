@@ -2,6 +2,7 @@ package main
 
 import (
 	scrapercontroller "bin-collections-api/internal/controllers"
+	config "bin-collections-api/internal/config"
 	"log"
 	"net/http"
 	"os"
@@ -11,7 +12,7 @@ import (
 )
 
 func main() {
-	godotenv.Load(".env.yml")
+	godotenv.Load(config.ProjectRootPath + "/config/.env.yml")
 	port := os.Getenv("PORT")
 	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/address/search", scrapercontroller.GetAddresses).Methods("POST")
